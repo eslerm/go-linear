@@ -98,6 +98,32 @@ Related: {entity}_{related-actions}
 4. Run `make check` before pushing
 5. PR description should explain *why*, not just *what*
 
+## Releases
+
+Releases are automated via GitHub Actions on tag push.
+
+### Process
+
+1. **Prepare**: ensure `CHANGELOG.md` has the version header with a date (not `Unreleased`). The changelog update must be its own commit at the tip of the branch — do not combine it with code changes
+2. **Merge**: get the release PR merged to `main`
+3. **Close stale PRs/issues**: close any PRs or issues resolved by the release
+4. **Tag**: create a signed annotated tag on the merge commit
+   ```bash
+   git fetch upstream
+   git tag -a v$VERSION upstream/main -m "v$VERSION: short description"
+   git push upstream v$VERSION
+   ```
+5. **Verify**: the release workflow builds 5 platform binaries + checksums and creates a GitHub release with auto-generated notes
+6. **Monitor**: `gh run watch --repo chainguard-sandbox/go-linear <run-id>`
+
+### Notes
+
+- Tags are **permanent** — the `block-tag-deletion` ruleset prevents deletion or modification
+- Tags containing `-` (e.g., `v2.1.0-rc.1`) are marked as prerelease
+- `tag.gpgsign=true` requires a signing key (GPG or gitsign) and a non-empty message
+- The release title is the tag name (e.g., `v2.1.0`)
+- Version metadata is injected into binaries via `-ldflags` (Version, GitCommit, GitTreeState, BuildDate)
+
 ## Security
 
 Report vulnerabilities privately to mark.esler@chainguard.dev. See [SECURITY.md](SECURITY.md).
