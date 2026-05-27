@@ -6,6 +6,97 @@ import (
 	"testing"
 )
 
+// fieldError.Error() is exercised when an error is returned and its message is read.
+func TestNew_ErrorMessage(t *testing.T) {
+	_, err := New("id,,title", nil)
+	if err == nil {
+		t.Fatal("expected error for empty field in spec")
+	}
+	if err.Error() == "" {
+		t.Error("error message should not be empty")
+	}
+}
+
+// New("defaults", nil) with no command defaults resolves to an empty field list
+// and should return a nil selector (no filtering).
+func TestNew_DefaultsNoCommandDefaults(t *testing.T) {
+	fs, err := New("defaults", nil)
+	if err != nil {
+		t.Fatalf("New(\"defaults\", nil): %v", err)
+	}
+	if fs != nil {
+		t.Error("expected nil selector when defaults spec has no configured defaults")
+	}
+}
+
+// NewForList returns nil when New returns nil (no filtering requested).
+func TestNewForList_NilPassthrough(t *testing.T) {
+	fs, err := NewForList("none", nil)
+	if err != nil {
+		t.Fatalf("NewForList(\"none\", nil): %v", err)
+	}
+	if fs != nil {
+		t.Error("expected nil selector for 'none' spec")
+	}
+}
+
+// NewForList propagates errors from New (e.g. empty field in spec).
+func TestNewForList_PropagatesError(t *testing.T) {
+	_, err := NewForList("id,,title", nil)
+	if err == nil {
+		t.Error("expected error for empty field in spec")
+	}
+}
+
+// NewForList preserves pagination wrapper fields (nodes, pageInfo, totalCount)
+// while filtering inner object fields — exercises filterObject's preserveFields branch.
+func TestNewForList_PreservesWrapperFields(t *testing.T) {
+	fs, err := NewForList("id,title", nil)
+	if err != nil {
+		t.Fatalf("NewForList: %v", err)
+	}
+	input := `{"nodes":[{"id":"1","title":"T","extra":"e"}],"pageInfo":{"hasNextPage":false},"totalCount":1}`
+	out, err := fs.Filter([]byte(input))
+	if err != nil {
+		t.Fatalf("Filter: %v", err)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(out, &obj); err != nil {
+		t.Fatalf("output not valid JSON: %v", err)
+	}
+	for _, key := range []string{"nodes", "pageInfo", "totalCount"} {
+		if _, ok := obj[key]; !ok {
+			t.Errorf("wrapper field %q missing from output", key)
+		}
+	}
+	nodes := obj["nodes"].([]any)
+	inner := nodes[0].(map[string]any)
+	if _, ok := inner["extra"]; ok {
+		t.Error("inner field 'extra' should have been filtered out")
+	}
+}
+
+// Filter returns an error on invalid JSON input.
+func TestFilter_InvalidJSON(t *testing.T) {
+	fs, _ := New("id", nil)
+	_, err := fs.Filter([]byte(`{invalid json`))
+	if err == nil {
+		t.Error("expected error for invalid JSON input")
+	}
+}
+
+// filterValue default branch: scalar values inside an array pass through unchanged.
+func TestFilter_ScalarArrayElements(t *testing.T) {
+	fs, _ := New("id", nil)
+	out, err := fs.Filter([]byte(`["a", "b", "c"]`))
+	if err != nil {
+		t.Fatalf("Filter: %v", err)
+	}
+	if !json.Valid(out) {
+		t.Errorf("output is not valid JSON: %s", out)
+	}
+}
+
 // Property: Filter is idempotent — applying the same spec twice equals applying it once.
 func TestFilter_Idempotent(t *testing.T) {
 	cases := []struct {

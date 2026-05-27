@@ -58,6 +58,14 @@ func TestNullable_RoundTrip(t *testing.T) {
 	})
 }
 
+// UnmarshalJSON returns an error when JSON type doesn't match T.
+func TestNullable_UnmarshalTypeError(t *testing.T) {
+	var n Nullable[int]
+	if err := json.Unmarshal([]byte(`"not-a-number"`), &n); err == nil {
+		t.Error("expected error unmarshaling string into Nullable[int]")
+	}
+}
+
 // Property: the three states are mutually exclusive.
 // For each state: IsSet, IsZero, and Get() must all agree.
 func TestNullable_StateInvariant(t *testing.T) {
