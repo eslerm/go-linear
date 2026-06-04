@@ -49,11 +49,15 @@ func (c *fixFlagsConn) Read(ctx context.Context) (jsonrpc.Message, error) {
 	}
 
 	fixed, err := fixDoubleEncodedFlags(req.Params)
-	if err != nil || fixed == nil {
-		return msg, nil
+	if err == nil && fixed != nil {
+		req.Params = fixed
+		return req, nil
 	}
-	req.Params = fixed
-	return req, nil
+	// No fix applied — either nothing needed changing or the params were
+	// malformed. Forward the original message unchanged; the downstream MCP
+	// layer rejects anything invalid. (Behavior locked by
+	// TestFixFlagsConn_Read_FixErrorFallsThrough.)
+	return msg, nil
 }
 
 // fixDoubleEncodedFlags detects and fixes double-encoded flags in tools/call params.
@@ -70,8 +74,8 @@ func fixDoubleEncodedFlags(raw json.RawMessage) (json.RawMessage, error) {
 		return nil, nil
 	}
 
-	var args map[string]json.RawMessage
-	if err := json.Unmarshal(argsRaw, &args); err != nil {
+	args, ok := asJSONObjectMap(argsRaw)
+	if !ok {
 		return nil, nil
 	}
 
@@ -99,6 +103,16 @@ func fixDoubleEncodedFlags(raw json.RawMessage) (json.RawMessage, error) {
 	}
 	params["arguments"] = patchedArgs
 	return json.Marshal(params)
+}
+
+// asJSONObjectMap unmarshals raw into a JSON object map. ok is false if raw is
+// not a JSON object, in which case the caller treats it as "nothing to fix".
+func asJSONObjectMap(raw json.RawMessage) (map[string]json.RawMessage, bool) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, false
+	}
+	return m, true
 }
 
 // asJSONString returns the string value if raw is a JSON string, else ("", false).
