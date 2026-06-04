@@ -283,3 +283,46 @@ func TestMustParse(t *testing.T) {
 	}()
 	p.MustParse("invalid")
 }
+
+// TestParse_DurationOverflow is a regression for #88: large duration amounts
+// must be rejected with an error, not silently overflow int64 nanoseconds and
+// invert the offset direction.
+func TestParse_DurationOverflow(t *testing.T) {
+	p := New()
+	now := time.Now().UTC()
+
+	// Amounts just past the per-unit overflow threshold (these previously
+	// wrapped, e.g. Parse("106752d") returned a date in the future).
+	overflowing := []string{"106752d", "2562048h", "15251w", "3559m", "99999999999d"}
+	for _, in := range overflowing {
+		if _, err := p.Parse(in); err == nil {
+			t.Errorf("Parse(%q): expected overflow error, got nil", in)
+		}
+		if _, err := p.ParseFuture(in); err == nil {
+			t.Errorf("ParseFuture(%q): expected overflow error, got nil", in)
+		}
+	}
+
+	// Large-but-valid amounts must still parse and keep their direction:
+	// Parse in the past, ParseFuture in the future. "2562047h" is the largest
+	// valid hour amount (2562048h is the first to overflow), so it guards the
+	// max-valid boundary directly below the overflow threshold above.
+	for _, in := range []string{"3650d", "1000w", "100m", "2562047h"} {
+		past, err := p.Parse(in)
+		if err != nil {
+			t.Errorf("Parse(%q): unexpected error: %v", in, err)
+			continue
+		}
+		if !past.Before(now) {
+			t.Errorf("Parse(%q) = %v, want a past time", in, past)
+		}
+		future, err := p.ParseFuture(in)
+		if err != nil {
+			t.Errorf("ParseFuture(%q): unexpected error: %v", in, err)
+			continue
+		}
+		if !future.After(now) {
+			t.Errorf("ParseFuture(%q) = %v, want a future time", in, future)
+		}
+	}
+}
