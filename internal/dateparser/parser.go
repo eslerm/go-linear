@@ -8,6 +8,7 @@ package dateparser
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,6 +16,33 @@ import (
 )
 
 var durationRegex = regexp.MustCompile(`^(\d+)([hdwm])$`)
+
+// relativeDuration converts a parsed amount and unit (h/d/w/m) into a
+// time.Duration magnitude. It rejects amounts large enough to overflow int64
+// nanoseconds, which would otherwise silently wrap and invert the offset
+// direction (e.g. a huge "Nd" making Parse return a future time).
+func relativeDuration(amount int, unit string) (time.Duration, error) {
+	var unitDur time.Duration
+	switch unit {
+	case "h":
+		unitDur = time.Hour
+	case "d":
+		unitDur = 24 * time.Hour
+	case "w":
+		unitDur = 7 * 24 * time.Hour
+	case "m":
+		unitDur = 30 * 24 * time.Hour // approximate: 30 days per month
+	default:
+		return 0, fmt.Errorf("invalid duration unit: %s", unit)
+	}
+	// unitDur is always > 0 here (the default branch returns before this point),
+	// so the integer division is safe; dividing MaxInt64 by unitDur first yields
+	// the largest amount that won't overflow the subsequent multiplication.
+	if time.Duration(amount) > time.Duration(math.MaxInt64)/unitDur {
+		return 0, fmt.Errorf("duration amount too large: %d%s", amount, unit)
+	}
+	return time.Duration(amount) * unitDur, nil
+}
 
 // Parser parses date strings in various formats.
 type Parser struct{}
@@ -67,21 +95,14 @@ func (p Parser) Parse(input string) (time.Time, error) {
 		}
 
 		unit := matches[2]
-		var duration time.Duration
+		duration, err := relativeDuration(amount, unit)
+		if err != nil {
+			return time.Time{}, err
+		}
 
-		switch unit {
-		case "h":
+		if unit == "h" {
 			// Hours preserve wall-clock time; no midnight truncation.
-			return now.Add(-time.Duration(amount) * time.Hour), nil
-		case "d":
-			duration = time.Duration(amount) * 24 * time.Hour
-		case "w":
-			duration = time.Duration(amount) * 7 * 24 * time.Hour
-		case "m":
-			// Approximate: 30 days per month
-			duration = time.Duration(amount) * 30 * 24 * time.Hour
-		default:
-			return time.Time{}, fmt.Errorf("invalid duration unit: %s", unit)
+			return now.Add(-duration), nil
 		}
 
 		result := now.Add(-duration) // Subtract duration from now
@@ -138,19 +159,9 @@ func (p Parser) ParseFuture(input string) (time.Time, error) {
 		}
 
 		unit := matches[2]
-		var duration time.Duration
-
-		switch unit {
-		case "h":
-			duration = time.Duration(amount) * time.Hour
-		case "d":
-			duration = time.Duration(amount) * 24 * time.Hour
-		case "w":
-			duration = time.Duration(amount) * 7 * 24 * time.Hour
-		case "m":
-			duration = time.Duration(amount) * 30 * 24 * time.Hour
-		default:
-			return time.Time{}, fmt.Errorf("invalid duration unit: %s", unit)
+		duration, err := relativeDuration(amount, unit)
+		if err != nil {
+			return time.Time{}, err
 		}
 
 		return now.Add(duration), nil
