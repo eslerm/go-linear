@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 
@@ -47,26 +48,38 @@ func (c *fixFlagsConn) Read(ctx context.Context) (jsonrpc.Message, error) {
 		return msg, nil
 	}
 
-	fixed, _ := fixDoubleEncodedFlags(req.Params)
-	if fixed == nil {
-		return msg, nil
+	fixed, err := fixDoubleEncodedFlags(req.Params)
+	if err == nil && fixed != nil {
+		req.Params = fixed
+		return req, nil
 	}
-	req.Params = fixed
-	return req, nil
+	// No fix applied — either nothing needed changing or the params were
+	// malformed. Forward the original message unchanged; the downstream MCP
+	// layer rejects anything invalid. (Behavior locked by
+	// TestFixFlagsConn_Read_FixErrorFallsThrough.)
+	return msg, nil
 }
 
 // fixDoubleEncodedFlags detects and fixes double-encoded flags in tools/call params.
 // Returns nil if no fix was needed, or the corrected params if a fix was applied.
+// Uses map-based unmarshaling to preserve all top-level fields (e.g. _meta/progressToken).
 func fixDoubleEncodedFlags(raw json.RawMessage) (json.RawMessage, error) {
-	var params struct {
-		Name      string                     `json:"name"`
-		Arguments map[string]json.RawMessage `json:"arguments"`
-	}
+	var params map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &params); err != nil {
 		return nil, err
 	}
 
-	flagsRaw, ok := params.Arguments["flags"]
+	argsRaw, ok := params["arguments"]
+	if !ok {
+		return nil, nil
+	}
+
+	args, ok := asJSONObjectMap(argsRaw)
+	if !ok {
+		return nil, nil
+	}
+
+	flagsRaw, ok := args["flags"]
 	if !ok {
 		return nil, nil
 	}
@@ -77,14 +90,29 @@ func fixDoubleEncodedFlags(raw json.RawMessage) (json.RawMessage, error) {
 		return nil, nil
 	}
 
-	// Decode the inner JSON string into an object; leave it alone if invalid.
+	// Decode the inner JSON string into an object; leave it alone if non-object or invalid.
 	flagsObj, ok := asJSONObject([]byte(flagsStr))
 	if !ok {
 		return nil, nil
 	}
 
-	params.Arguments["flags"] = flagsObj
+	args["flags"] = flagsObj
+	patchedArgs, err := json.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+	params["arguments"] = patchedArgs
 	return json.Marshal(params)
+}
+
+// asJSONObjectMap unmarshals raw into a JSON object map. ok is false if raw is
+// not a JSON object, in which case the caller treats it as "nothing to fix".
+func asJSONObjectMap(raw json.RawMessage) (map[string]json.RawMessage, bool) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, false
+	}
+	return m, true
 }
 
 // asJSONString returns the string value if raw is a JSON string, else ("", false).
@@ -96,11 +124,14 @@ func asJSONString(raw json.RawMessage) (string, bool) {
 	return s, true
 }
 
-// asJSONObject returns raw as a RawMessage if it is valid JSON object/array, else (nil, false).
+// asJSONObject returns data as a RawMessage if it is a valid JSON object, else (nil, false).
 func asJSONObject(data []byte) (json.RawMessage, bool) {
-	var obj json.RawMessage
-	if err := json.Unmarshal(data, &obj); err != nil {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || trimmed[0] != '{' {
 		return nil, false
 	}
-	return obj, true
+	if !json.Valid(trimmed) {
+		return nil, false
+	}
+	return json.RawMessage(trimmed), true
 }
