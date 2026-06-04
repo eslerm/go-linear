@@ -3,7 +3,6 @@ package project
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -47,7 +46,7 @@ func runRelationDelete(cmd *cobra.Command, client *linear.Client, relationID str
 	if !confirmFlags.Yes {
 		fmt.Fprintf(cmd.OutOrStderr(), "Delete project relation %s? This cannot be undone.\n", relationID)
 		fmt.Fprint(cmd.OutOrStderr(), "Type 'yes' to confirm: ")
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(cmd.InOrStdin())
 		response, _ := reader.ReadString('\n')
 		if !strings.EqualFold(strings.TrimSpace(response), "yes") {
 			fmt.Fprintln(cmd.OutOrStderr(), "Canceled.")

@@ -175,3 +175,45 @@ func TestRunDelete(t *testing.T) {
 		}
 	})
 }
+
+// TestRunDelete_InteractiveConfirmation exercises the confirmation prompt via an
+// injected reader (cmd.SetIn) — possible only because #84 switched the prompt
+// from os.Stdin to cmd.InOrStdin().
+func TestRunDelete_InteractiveConfirmation(t *testing.T) {
+	server := testutil.MockServer(t, defaultHandlers())
+	defer server.Close()
+	factory := testutil.TestFactory(t, server.URL)
+
+	t.Run("yes proceeds with delete", func(t *testing.T) {
+		cmd := NewDeleteCommand(factory)
+		var buf bytes.Buffer
+		cmd.SetOut(&buf)
+		cmd.SetIn(strings.NewReader("yes\n"))
+		cmd.SetArgs([]string{"comment-123"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+		if !strings.Contains(buf.String(), "success") {
+			t.Errorf("expected success output after confirming, got: %s", buf.String())
+		}
+	})
+
+	t.Run("no cancels without deleting", func(t *testing.T) {
+		cmd := NewDeleteCommand(factory)
+		var buf bytes.Buffer
+		cmd.SetOut(&buf)
+		cmd.SetIn(strings.NewReader("no\n"))
+		cmd.SetArgs([]string{"comment-123"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+		// "Canceled." is written to cmd.OutOrStderr(), which returns the SetOut
+		// writer when one is set, so it lands in buf alongside any stdout.
+		if !strings.Contains(buf.String(), "Canceled") {
+			t.Errorf("expected cancellation message, got: %s", buf.String())
+		}
+		if strings.Contains(buf.String(), "success") {
+			t.Errorf("delete should not run when not confirmed, got: %s", buf.String())
+		}
+	})
+}

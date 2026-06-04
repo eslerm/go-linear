@@ -3,7 +3,6 @@ package issue
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -49,7 +48,7 @@ func runUnrelate(cmd *cobra.Command, client *linear.Client, relationID string) e
 		fmt.Fprintf(cmd.OutOrStderr(), "⚠️  Are you sure you want to delete this issue relation? This cannot be undone.\n")
 		fmt.Fprint(cmd.OutOrStderr(), "Type 'yes' to confirm: ")
 
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(cmd.InOrStdin())
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(response)
 

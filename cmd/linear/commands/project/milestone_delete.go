@@ -3,7 +3,6 @@ package project
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -48,7 +47,7 @@ func runMilestoneDelete(cmd *cobra.Command, client *linear.Client, milestoneID s
 		fmt.Fprintf(cmd.OutOrStderr(), "⚠️  Are you sure you want to delete this milestone? This cannot be undone.\n")
 		fmt.Fprint(cmd.OutOrStderr(), "Type 'yes' to confirm: ")
 
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(cmd.InOrStdin())
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(response)
 
