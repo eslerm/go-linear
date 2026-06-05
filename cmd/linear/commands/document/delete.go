@@ -3,7 +3,6 @@ package document
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -49,7 +48,7 @@ func runDelete(cmd *cobra.Command, client *linear.Client, documentID string, con
 	if !confirmFlags.Yes {
 		fmt.Fprintf(cmd.OutOrStderr(), "Delete document %s? This cannot be undone.\n", documentID)
 		fmt.Fprint(cmd.OutOrStderr(), "Type 'yes' to confirm: ")
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(cmd.InOrStdin())
 		response, _ := reader.ReadString('\n')
 		if !strings.EqualFold(strings.TrimSpace(response), "yes") {
 			fmt.Fprintln(cmd.OutOrStderr(), "Canceled.")

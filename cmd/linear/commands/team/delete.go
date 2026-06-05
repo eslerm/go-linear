@@ -3,7 +3,6 @@ package team
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -44,7 +43,7 @@ Related: team_list, team_get`,
 			if !confirmFlags.Yes {
 				fmt.Fprintf(cmd.OutOrStderr(), "Delete team %s? This CANNOT be undone.\n", args[0])
 				fmt.Fprint(cmd.OutOrStderr(), "Type 'yes' to confirm: ")
-				reader := bufio.NewReader(os.Stdin)
+				reader := bufio.NewReader(cmd.InOrStdin())
 				response, _ := reader.ReadString('\n')
 				if !strings.EqualFold(strings.TrimSpace(response), "yes") {
 					fmt.Fprintln(cmd.OutOrStderr(), "Canceled.")

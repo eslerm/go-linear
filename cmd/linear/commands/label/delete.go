@@ -3,7 +3,6 @@ package label
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -45,7 +44,7 @@ Related: label_list, label_get`,
 			if !confirmFlags.Yes {
 				fmt.Fprintf(cmd.OutOrStderr(), "Delete label %s? This cannot be undone.\n", args[0])
 				fmt.Fprint(cmd.OutOrStderr(), "Type 'yes' to confirm: ")
-				reader := bufio.NewReader(os.Stdin)
+				reader := bufio.NewReader(cmd.InOrStdin())
 				response, _ := reader.ReadString('\n')
 				if !strings.EqualFold(strings.TrimSpace(response), "yes") {
 					fmt.Fprintln(cmd.OutOrStderr(), "Canceled.")
