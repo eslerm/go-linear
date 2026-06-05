@@ -58,7 +58,9 @@ func runUpdate(cmd *cobra.Command, client *linear.Client, notificationID string)
 
 	if snoozeUntilStr != "" {
 		parser := dateparser.New()
-		snoozeUntil, err := parser.Parse(snoozeUntilStr)
+		// Snooze targets a future time, so relative durations ("3d") mean
+		// "from now" and past/"today" inputs are rejected.
+		snoozeUntil, err := parser.ParseFuture(snoozeUntilStr)
 		if err != nil {
 			return fmt.Errorf("invalid snooze-until date: %w", err)
 		}
