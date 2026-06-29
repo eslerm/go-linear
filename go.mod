@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/Yamashou/gqlgenc v0.33.0
-	github.com/chainguard-dev/clog v1.8.0
+	github.com/chainguard-dev/clog v1.8.1
 	github.com/codeGROOVE-dev/fido v1.11.0
 	github.com/codeGROOVE-dev/fido/pkg/store/localfs v1.11.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
