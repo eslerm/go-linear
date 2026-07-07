@@ -1,0 +1,94 @@
+project_name: go-linear
+version: 2
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: go-linear
+    binary: go-linear
+    main: ./cmd/linear
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    # Reproducible builds: pin module timestamps to the commit and inject the
+    # same version metadata the previous shell-based workflow provided.
+    # Version keeps the v-prefixed tag name for parity with prior releases.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - >-
+        -s -w -buildid=
+        -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.Version={{ .Tag }}
+        -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.GitCommit={{ .FullCommit }}
+        -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.GitTreeState=clean
+        -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.BuildDate={{ .CommitDate }}
+
+archives:
+  - id: go-linear
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+    wrap_in_directory: true
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+# Parity with the previous `gh release create --generate-notes` behavior.
+changelog:
+  use: github-native
+
+release:
+  name_template: "{{ .Tag }}"
+  # Tags containing '-' (e.g. v2.4.0-rc.1) are marked prerelease, matching the
+  # previous workflow's substring rule.
+  prerelease: auto
+  # Create as draft; the workflow publishes after all assets upload, preserving
+  # the previous draft-then-publish flow so a mid-run failure never leaves a
+  # published release with partial assets.
+  draft: true
+
+# brews is deprecated in goreleaser v2 in favor of homebrew_casks, but casks
+# are macOS-only; a formula also serves Linuxbrew users and matches the
+# Formula/ layout of existing chainguard taps. The release workflow pins
+# goreleaser to v2, where brews remains functional.
+brews:
+  - name: go-linear
+    repository:
+      owner: chainguard-sandbox
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    url_template: "https://github.com/chainguard-sandbox/go-linear/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: guardian
+      email: guardian@chainguard.dev
+    homepage: "https://github.com/chainguard-sandbox/go-linear"
+    description: "Linear CLI and MCP server for issue tracking"
+    license: "Apache-2.0"
+    # Don't publish formula updates for prereleases.
+    skip_upload: auto
+    install: |
+      bin.install "go-linear"
+    test: |
+      system "#{bin}/go-linear", "--version"

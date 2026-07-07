@@ -11,7 +11,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # gh release create/upload/edit
+      contents: write  # create the GitHub release and upload artifacts
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -30,77 +30,18 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Build binaries
-        run: |
-          VERSION=${GITHUB_REF_NAME}
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Pushes the generated formula to chainguard-sandbox/homebrew-tap.
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
 
-          # Build matrix
-          platforms=(
-            "linux/amd64"
-            "linux/arm64"
-            "darwin/amd64"
-            "darwin/arm64"
-            "windows/amd64"
-          )
-
-          mkdir -p dist
-
-          # Cache commit timestamp for reproducible BuildDate (GNU date -d, Linux only)
-          BUILD_DATE=$(date -u -d "@$(git log -1 --pretty=%ct)" +%Y-%m-%dT%H:%M:%SZ)
-
-          for platform in "${platforms[@]}"; do
-            GOOS="${platform%/*}"
-            GOARCH="${platform#*/}"
-            output="dist/go-linear-${VERSION}-${GOOS}-${GOARCH}"
-
-            if [ "$GOOS" = "windows" ]; then
-              output="${output}.exe"
-            fi
-
-            echo "Building ${GOOS}/${GOARCH}..."
-            GOOS="${GOOS}" GOARCH="${GOARCH}" CGO_ENABLED=0 go build \
-              -trimpath \
-              -ldflags="-s -w -buildid= \
-                -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.Version=${VERSION} \
-                -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.GitCommit=${GITHUB_SHA} \
-                -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.GitTreeState=clean \
-                -X github.com/chainguard-sandbox/go-linear/v2/pkg/linear.BuildDate=${BUILD_DATE}" \
-              -o "$output" \
-              ./cmd/linear
-          done
-
-          # Create checksums
-          cd dist
-          sha256sum go-linear-* > checksums.txt
-
-      - name: Create Release
+      - name: Publish Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          VERSION=${GITHUB_REF_NAME}
-          PRERELEASE=""
-          if [[ "$VERSION" == *"-"* ]]; then
-            PRERELEASE="--prerelease"
-          fi
-
-          # Create draft release if it doesn't already exist (idempotent for re-runs).
-          if ! gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release create "$VERSION" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$VERSION" \
-              --generate-notes \
-              --draft \
-              ${PRERELEASE:+"$PRERELEASE"}
-          fi
-
-          # Upload artifacts to the draft release (--clobber handles re-runs).
-          gh release upload "$VERSION" \
-            --repo "$GITHUB_REPOSITORY" \
-            --clobber \
-            dist/go-linear-* \
-            dist/checksums.txt
-
-          # Publish the release.
-          gh release edit "$VERSION" \
-            --repo "$GITHUB_REPOSITORY" \
-            --draft=false
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
