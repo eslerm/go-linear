@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-06-29
+
+### Added
+- `--estimate` flag on `issue update`, including float values and `none` to clear (#68, #87)
+- `issue subscribe` / `issue unsubscribe` commands (#62)
+- `audit list` and `audit types` commands with type/actor/IP/country-code/date filters (#66)
+- Project label and relation CRUD commands (#65)
+- Bulk notification operations: `archive-all`, `mark-read-all`, `mark-unread-all`, `snooze-all`, `unsnooze-all` (#63)
+- `--team` and structured filters (assignee, state, priority, label) on `issue search` (#61)
+- Property and fuzz tests for `Nullable`, dateparser, and fieldfilter (#87, #107)
+
+### Fixed
+- MCP: normalize double-encoded `flags` sent by some MCP clients (#76); preserve `_meta`/`progressToken`, restrict flags to objects, and propagate parse errors (#86)
+- `notification update --snooze-until` now parses relative dates toward the future (#100)
+- dateparser rejects overflowing duration amounts (#99)
+- Re-export server-side filter and result types from `pkg/linear` (#102)
+- Run gqlgenc from the repo root in the Makefile (#47)
+
+### Changed
+- Sync upstream schema to `@linear/sdk@87.0.0` (was 77.0.0; via 80.0.0 in #48, 87.0.0 in #108)
+- Go 1.26.4 (was 1.26.1; clears stdlib vulnerabilities) (#98)
+- Confirmation prompts read from `cmd.InOrStdin()` for testability (#101)
+- Release workflow reliability: idempotent release creation, cached commit timestamp for reproducible BuildDate (#49)
+
+### Security
+- GitHub Actions hardening: deny-by-default workflow token grants, shell variable quoting, zizmor rule tuning (#95)
+- Added GitHub Actions linting workflows (actionlint, zizmor)
+- Routine Dependabot bumps for GitHub Actions and Go module dependencies
+
 ## [2.2.1] - 2026-03-20
 
 ### Fixed
