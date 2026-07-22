@@ -3,6 +3,7 @@ package issue
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -272,6 +273,9 @@ func runUpdate(cmd *cobra.Command, client *linear.Client, issueID string) error 
 	return formatter.FormatJSON(cmd.OutOrStdout(), result, true)
 }
 
+// shortPRFormat matches the owner/repo#number short format accepted by --link-pr.
+var shortPRFormat = regexp.MustCompile(`^([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)/([A-Za-z0-9._-]+)#([0-9]+)$`)
+
 // linkGitHubPR links a GitHub PR to the issue if --link-pr is specified.
 func linkGitHubPR(ctx context.Context, cmd *cobra.Command, client *linear.Client, issueID string) error {
 	prURL, _ := cmd.Flags().GetString("link-pr")
@@ -279,11 +283,14 @@ func linkGitHubPR(ctx context.Context, cmd *cobra.Command, client *linear.Client
 		return nil
 	}
 
-	// Convert short format (owner/repo#123) to full URL if needed
+	// Convert short format (owner/repo#123) to a canonical GitHub PR URL
 	fullURL := prURL
 	if !contains(prURL, "://") {
-		// Assume GitHub format: owner/repo#123
-		fullURL = "https://github.com/" + prURL
+		m := shortPRFormat.FindStringSubmatch(prURL)
+		if m == nil {
+			return fmt.Errorf("invalid --link-pr value %q: expected owner/repo#number or a full URL", prURL)
+		}
+		fullURL = fmt.Sprintf("https://github.com/%s/%s/pull/%s", m[1], m[2], m[3])
 	}
 
 	_, err := client.AttachmentLinkGitHubPR(ctx, issueID, fullURL)
