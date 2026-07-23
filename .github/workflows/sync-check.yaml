@@ -47,8 +47,8 @@ jobs:
           if [ -z "$SHA" ]; then
             SHA=$(printf '%s\n' "$TAGS" | awk -v t="refs/tags/${LATEST_TAG}" '$2==t {print $1}')
           fi
-          if [ -z "$SHA" ]; then
-            echo "::error::could not resolve commit SHA for ${LATEST_TAG}"
+          if ! printf '%s\n' "$SHA" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "::error::could not resolve a valid commit SHA for ${LATEST_TAG} (got: ${SHA})"
             exit 1
           fi
           {
