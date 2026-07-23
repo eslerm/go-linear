@@ -273,7 +273,11 @@ func runUpdate(cmd *cobra.Command, client *linear.Client, issueID string) error 
 	return formatter.FormatJSON(cmd.OutOrStdout(), result, true)
 }
 
-// shortPRFormat matches the owner/repo#number short format accepted by --link-pr.
+// shortPRFormat matches the owner/repo#number short format accepted by
+// --link-pr. The owner and repo groups are deliberately asymmetric,
+// mirroring GitHub's naming rules: owners are alphanumeric-and-hyphen and
+// cannot start or end with a hyphen, while repo names also allow '.' and
+// '_' and may start or end with any of them (e.g. myorg/.github).
 var shortPRFormat = regexp.MustCompile(`^([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)/([A-Za-z0-9._-]+)#([0-9]+)$`)
 
 // linkGitHubPR links a GitHub PR to the issue if --link-pr is specified.

@@ -396,6 +396,7 @@ func TestRunUpdate_LinkPRInvalidFormat(t *testing.T) {
 		{name: "non-numeric number", linkPR: "owner/repo#abc"},
 		{name: "extra path segment", linkPR: "owner/repo/extra#1"},
 		{name: "leading hyphen in owner", linkPR: "-owner/repo#1"},
+		{name: "trailing hyphen in owner", linkPR: "owner-/repo#1"},
 	}
 
 	for _, tt := range tests {
