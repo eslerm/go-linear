@@ -348,6 +348,11 @@ func TestRunUpdate_LinkPR(t *testing.T) {
 			wantURL: "https://github.com/my-org/repo.name/pull/45",
 		},
 		{
+			name:    "link-pr with dot-leading repo",
+			args:    []string{"ENG-123", "--title=x", "--link-pr=myorg/.github#12"},
+			wantURL: "https://github.com/myorg/.github/pull/12",
+		},
+		{
 			name:    "link-pr with full URL passed through unchanged",
 			args:    []string{"ENG-123", "--estimate=5", "--link-pr=https://github.com/owner/repo/pull/4"},
 			wantURL: "https://github.com/owner/repo/pull/4",
@@ -397,6 +402,7 @@ func TestRunUpdate_LinkPRInvalidFormat(t *testing.T) {
 		{name: "extra path segment", linkPR: "owner/repo/extra#1"},
 		{name: "leading hyphen in owner", linkPR: "-owner/repo#1"},
 		{name: "trailing hyphen in owner", linkPR: "owner-/repo#1"},
+		{name: "schemeless full PR path", linkPR: "owner/repo/pull/5"},
 	}
 
 	for _, tt := range tests {
