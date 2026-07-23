@@ -429,6 +429,9 @@ func TestRunUpdate_LinkPRInvalidFormat(t *testing.T) {
 			if captured.LinkPRVars != nil {
 				t.Errorf("AttachmentLinkGitHubPR was called with %v, want no call", captured.LinkPRVars)
 			}
+			if captured.Input != nil {
+				t.Errorf("UpdateIssue ran with input %v, want no mutation for an invalid --link-pr", captured.Input)
+			}
 		})
 	}
 }
