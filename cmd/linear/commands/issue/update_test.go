@@ -465,6 +465,12 @@ func TestRunUpdate_LinkPROnly(t *testing.T) {
 		if got := result["identifier"]; got != "ENG-123" {
 			t.Errorf("output identifier = %v, want %q (the fetched issue)", got, "ENG-123")
 		}
+		if got := result["id"]; got != "issue-123" {
+			t.Errorf("output id = %v, want %q", got, "issue-123")
+		}
+		if got := result["title"]; got != "Test Issue" {
+			t.Errorf("output title = %v, want %q", got, "Test Issue")
+		}
 		if _, exists := result["assignee"]; exists {
 			t.Error("output contains assignee key; want the update-result shape, not the full GetIssue shape")
 		}
