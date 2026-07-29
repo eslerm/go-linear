@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - Unreleased
+
+### Added
+- `creator` and `botActor` fields on issue queries — `issue get --fields=creator.name` attributes who (or which app) created an issue (#133)
+
+### Changed
+- Sync upstream schema to `@linear/sdk@88.3.0` (was 87.0.0)
+- Go 1.26.5 (was 1.26.4; clears stdlib vulnerabilities)
+- Release artifacts are now `.tar.gz` archives with a checksums file (was bare per-platform binaries)
+
+### Fixed
+- `ResolveUser` paginates past the first 250 workspace members instead of failing with a misleading "user not found" (#133)
+- `issue update --link-pr` works without other update fields, converts short `org/repo#123` form to a canonical PR URL, and runs in the nullable update path (#113, #123, #124)
+- MCP: `asJSONObjectMap` and `asJSONString` return `ok=false` for JSON null (#114)
+
+### Security
+- CI schema acquisition pinned to release tags instead of `master` branch curls (#128)
+
+## [2.3.0] - 2026-06-29
+
+### Added
+- Audit log commands (`audit list`, `audit types`) with `--type`, `--actor`, `--ip`, `--country-code`, and date filters; requires Admin or Owner role (#66)
+- Project label and relation CRUD commands (#65)
+- Bulk notification operations (#63)
+- `issue subscribe` / `issue unsubscribe` commands (#62)
+- `issue search --team` and structured filters (#61)
+- `issue update --estimate` with float support; `--estimate=none` clears the estimate
+
+### Changed
+- Sync upstream schema to `@linear/sdk@87.0.0` (was 77.0.0)
+- Go 1.26.4 (was 1.26.1; clears stdlib vulnerabilities)
+- Confirmation prompts read from `cmd.InOrStdin()` for testability
+
+### Fixed
+- MCP: normalize double-encoded flags from MCP clients; preserve `_meta`, restrict flags to objects, propagate parse errors (#76)
+- `notification snooze` parses `--until` in the future direction
+- Date parser rejects overflowing duration amounts
+- Re-export server-side filter and result types from `pkg/linear` (#102)
+- Run gqlgenc from repo root in Makefile (#47)
+
+### Security
+- Collapse workflow-level token grants to deny-by-default
+- Add GitHub Actions linters (actionlint, zizmor) to CI; quote shell variables in workflow run blocks
+- Release workflow reliability improvements (#49)
+
 ## [2.2.1] - 2026-03-20
 
 ### Fixed
@@ -53,17 +98,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Clean up for public release
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-02-25
 
 ### Breaking Changes
 - **JSON-only output**: Dropped table output — all commands output JSON exclusively. The `--output` flag is removed (~4,000 lines removed). See [docs/MIGRATION.md](docs/MIGRATION.md).
 - **SDK**: `IssueDelete(ctx, id)` → `IssueDelete(ctx, id, permanentlyDelete *bool)`. Pass `nil` to preserve v1.x behavior.
 
 ### Added
-
-**Audit Log** (2 commands, requires Admin or Owner role):
-- `audit list` — paginated listing with filters: `--type`, `--actor` (name/email/ID), `--ip`, `--country-code`, `--created-after`, `--created-before`
-- `audit types` — list all valid `--type` values with descriptions
 
 **Lifecycle Management** (12 commands):
 - `issue archive` / `issue unarchive` / `issue delete --permanent`
@@ -467,5 +508,16 @@ First stable release of go-linear, a production-ready Go client for the Linear A
 
 **License**: Apache 2.0
 
-[1.1.0]: https://github.com/eslerm/go-linear/releases/tag/v1.1.0
-[1.0.0]: https://github.com/eslerm/go-linear/releases/tag/v1.0.0
+[2.4.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v2.4.0
+[2.3.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v2.3.0
+[2.2.1]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v2.2.1
+[2.2.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v2.2.0
+[2.1.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v2.1.0
+[2.0.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v2.0.0
+[1.4.1]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.4.1
+[1.4.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.4.0
+[1.3.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.3.0
+[1.2.1]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.2.1
+[1.2.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.2.0
+[1.1.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.1.0
+[1.0.0]: https://github.com/chainguard-sandbox/go-linear/releases/tag/v1.0.0
